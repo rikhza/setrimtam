@@ -1,0 +1,6 @@
+name = "setrimtam"
+compatibility_date = "2026-04-01"
+
+[assets]
+directory = "./dist/"
+not_found_handling = "single-page-application"
