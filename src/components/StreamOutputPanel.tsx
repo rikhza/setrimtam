@@ -67,7 +67,7 @@ export default function StreamOutputPanel({
       : null;
 
   return (
-    <section className="panel panel-output" aria-label="VTAM Stream Output">
+    <section className="panel panel-output" aria-label="Stream output">
       <div className="panel-header">
         <div className="panel-title">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="18" height="18" aria-hidden="true">
@@ -75,7 +75,7 @@ export default function StreamOutputPanel({
             <line x1="8" y1="21" x2="16" y2="21" />
             <line x1="12" y1="17" x2="12" y2="21" />
           </svg>
-          <span>VTAM Stream</span>
+          <span>Stream</span>
           {totalBytes > 0 && (
             <span className="stream-length" aria-label={`${totalBytes} bytes total`}>
               {totalBytes} B
@@ -120,7 +120,7 @@ export default function StreamOutputPanel({
             )}
           </div>
           <div ref={rawWrapperRef} className="stream-raw-wrapper">
-            <pre className="stream-raw" aria-label="Raw VTAM stream">
+            <pre className="stream-raw" aria-label="Raw message stream">
               {hasSegments ? (
                 breakdown.map((item, i) => {
                   const segment = stream.slice(item.position, item.position + item.field.charLength);

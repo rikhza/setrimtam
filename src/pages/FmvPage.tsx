@@ -1,6 +1,12 @@
 import { useState, useMemo, useCallback, useLayoutEffect, useEffect, useRef } from 'react';
 import { useOutletContext } from 'react-router-dom';
-import { parseCobol, sliceRawStreamToBreakdown, type CobolField, type BreakdownItem } from '../lib/cobolParser';
+import {
+  parseCobol,
+  sliceRawStreamToBreakdown,
+  normalizeRawStreamForLayout,
+  type CobolField,
+  type BreakdownItem,
+} from '../lib/cobolParser';
 import { useToast } from '../hooks/useToast';
 import type { ToolsOutletContext } from '../toolOutletContext';
 import CopybookInputPanel from '../components/CopybookInputPanel';
@@ -25,7 +31,8 @@ export default function FmvPage() {
     if (parsedFields.length === 0 || rawText.length === 0) {
       return { breakdown: [] as BreakdownItem[], warnings: [] as string[] };
     }
-    const { breakdown: bd, warnings: w } = sliceRawStreamToBreakdown(rawText, parsedFields);
+    const normalized = normalizeRawStreamForLayout(rawText);
+    const { breakdown: bd, warnings: w } = sliceRawStreamToBreakdown(normalized, parsedFields);
     return { breakdown: bd, warnings: w };
   }, [parsedFields, rawText]);
 

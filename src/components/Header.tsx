@@ -10,7 +10,7 @@ export default function Header({ onClearAll }: HeaderProps) {
 
 	let subtitle = "For Mainframe";
 	if (pathname.startsWith("/tools/stream")) {
-		subtitle = "COBOL copybook → VTAM stream";
+		subtitle = "COBOL copybook → message stream";
 	} else if (
 		pathname.startsWith("/tools/fmv") ||
 		pathname.startsWith("/tools/inspect")

@@ -1,7 +1,7 @@
 /**
  * COBOL Copybook Parser
  * ======================
- * Parses COBOL INBOUND-MESSAGE copybook definitions into a structured
+ * Parses COBOL copybook data definitions into a structured
  * array of field descriptors for stream generation.
  *
  * Handles:
@@ -107,8 +107,8 @@ const CobolParser = (() => {
 
     /**
      * Check if a line is a change-control line that comments out previous definitions.
-     * Lines like "A03055*    05  SME-FIELD ..." indicate the OLD definition is commented.
-     * Lines like "A03055     05  SME-FIELD ..." are the NEW (active) definition.
+     * Lines like "A03055*    05  MY-FIELD ..." indicate the OLD definition is commented.
+     * Lines like "A03055     05  MY-FIELD ..." are the NEW (active) definition.
      */
     function getChangeControlInfo(line) {
         const match = line.match(/^([A-Z]\d{4,5})(\*?)\s+(.*)$/);
@@ -157,34 +157,37 @@ const CobolParser = (() => {
             if (!trimmed) continue;
             if (trimmed.startsWith('*')) continue;
 
-            // Parse 01-level record definition
             if (trimmed.match(/^01\s+/)) {
-                // Just skip the record-level definition
                 continue;
             }
 
-            // Parse 88-level condition names
-            const match88 = trimmed.match(/^88\s+(\S+)\s+VALUE\s+'?([^'.]+)'?\s*\.?\s*$/i);
-            if (match88) {
-                if (currentField) {
-                    if (!currentField.conditions) currentField.conditions = [];
-                    currentField.conditions.push({
-                        name: match88[1],
-                        value: match88[2].trim()
-                    });
+            if (trimmed.match(/^66\s+/i)) {
+                continue;
+            }
+
+            if (trimmed.match(/^88\s+/i)) {
+                const match88 = trimmed.match(/^88\s+(\S+)\s+VALUE\s+'?([^'.]+)'?\s*\.?\s*$/i);
+                if (match88) {
+                    if (currentField) {
+                        if (!currentField.conditions) currentField.conditions = [];
+                        currentField.conditions.push({
+                            name: match88[1],
+                            value: match88[2].trim()
+                        });
+                    }
                 }
                 continue;
             }
 
-            // Parse 05-level field definition
-            const fieldMatch = trimmed.match(
-                /^05\s+(\S+)\s+(.*)/i
-            );
+            const fieldLineMatch = trimmed.match(/^(\d{2,3})\s+(\S+)\s+(.*)/i);
+            if (!fieldLineMatch) continue;
 
-            if (!fieldMatch) continue;
+            const level = parseInt(fieldLineMatch[1], 10);
+            if (level === 66) continue;
+            if (level !== 77 && (level < 2 || level > 49)) continue;
 
-            const fieldName = fieldMatch[1];
-            let rest = fieldMatch[2].trim();
+            const fieldName = fieldLineMatch[2];
+            let rest = fieldLineMatch[3].trim();
 
             // Handle REDEFINES — skip the redefined field, this one replaces it
             let redefinesTarget = null;
@@ -302,49 +305,11 @@ const CobolParser = (() => {
         if (field.type === 'numeric') {
             if (field.decimals > 0) {
                 const intLen = field.length - field.decimals;
-                return '0'.repeat(Math.max(intLen - 4, 0)) + '1000' + '00'.substring(0, field.decimals);
-            }
-            // Generate plausible numeric data
-            if (field.name.includes('ACCNO') || field.name.includes('ACCT')) {
-                return '1234567890'.substring(0, field.length);
-            }
-            if (field.name.includes('DATE') || field.name.includes('BUSN')) {
-                return '20260416'.substring(0, field.length);
-            }
-            if (field.name.includes('BRANCH') || field.name.includes('BRCH')) {
-                return '0100'.substring(0, field.length);
-            }
-            if (field.name.includes('REF')) {
-                return '1'.repeat(field.length);
+                return '0'.repeat(Math.max(intLen - 4, 0)) + '1000' + '0'.repeat(field.decimals);
             }
             return '0'.repeat(field.length);
         }
 
-        // Alphanumeric
-        if (field.name.includes('TRANS') || field.name.includes('TXN-ID')) {
-            return 'SME1'.substring(0, field.length);
-        }
-        if (field.name.includes('WSID') || field.name.includes('TERM')) {
-            return '95088'.substring(0, field.length);
-        }
-        if (field.name.includes('CURR') || field.name.includes('SYMBL')) {
-            return 'IDR'.substring(0, field.length);
-        }
-        if (field.name.includes('NAME')) {
-            return 'TEST USER'.substring(0, field.length);
-        }
-        if (field.name.includes('DESC') || field.name.includes('TRAILER')) {
-            return 'DESCRIPTION'.substring(0, field.length);
-        }
-        if (field.name.includes('ADDR')) {
-            return 'JL SUDIRMAN'.substring(0, field.length);
-        }
-        if (field.name.includes('FLAG') || field.name.includes('TYPE') || field.name.includes('MODE')) {
-            return 'L'.substring(0, field.length);
-        }
-        if (field.name.includes('BANK')) {
-            return 'CENAIDJA'.substring(0, field.length);
-        }
         return ' '.repeat(field.length);
     }
 

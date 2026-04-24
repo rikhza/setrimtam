@@ -967,6 +967,60 @@ body[data-tool-saves-open='1'] .main-outlet-tools {
 
 .form-container { padding: 16px; }
 
+.raw-stream-dialog {
+  border: none;
+  padding: 0;
+  max-width: min(520px, 94vw);
+  border-radius: 12px;
+  background: var(--bg-panel, var(--bg-secondary));
+  color: var(--text-primary, inherit);
+  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.45);
+}
+
+.raw-stream-dialog::backdrop {
+  background: rgba(0, 0, 0, 0.5);
+}
+
+.raw-stream-dialog-panel {
+  padding: 18px 20px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.raw-stream-dialog-title {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.raw-stream-dialog-textarea {
+  width: 100%;
+  box-sizing: border-box;
+  resize: vertical;
+  min-height: 160px;
+  border: 1px solid var(--border-subtle, rgba(255, 255, 255, 0.12));
+  border-radius: 8px;
+  background: var(--bg-input);
+  color: var(--accent-green);
+  padding: 12px 14px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  line-height: 1.5;
+  outline: none;
+}
+
+.raw-stream-dialog-textarea:focus {
+  border-color: var(--accent-blue, #4a9eff);
+}
+
+.raw-stream-dialog-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 4px;
+}
+
 .empty-state {
   display: flex;
   flex-direction: column;

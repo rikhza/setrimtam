@@ -68,14 +68,14 @@ export default function TerminalPreview({ stream, fields }: TerminalPreviewProps
             <span className="terminal-dot red" aria-hidden="true" />
             <span className="terminal-dot yellow" aria-hidden="true" />
             <span className="terminal-dot green" aria-hidden="true" />
-            <span className="terminal-title">3270 Terminal — VTAM</span>
+            <span className="terminal-title">Terminal preview (24×80)</span>
           </div>
           <pre
             ref={containerRef}
             className="terminal-screen"
             onMouseMove={handleMouseMove}
             onMouseLeave={handleMouseLeave}
-            aria-label="Terminal preview of VTAM stream"
+            aria-label="Terminal preview of message stream"
           >
             {stream ? formatStreamForTerminal(stream) : ''}
           </pre>

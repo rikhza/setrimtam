@@ -1,3 +1,4 @@
+import { useState, useRef } from 'react';
 import type { CobolField } from '../lib/cobolParser';
 import FieldItem from './FieldItem';
 
@@ -5,7 +6,7 @@ interface FieldsFormPanelProps {
   fields: CobolField[];
   values: Record<string, string>;
   onChange: (name: string, value: string) => void;
-  onFillExample: () => void;
+  onFillFromRawStream: (raw: string) => void;
   onClearForm: () => void;
   formPulse: boolean;
   highlightedField: string | null;
@@ -15,14 +16,30 @@ export default function FieldsFormPanel({
   fields,
   values,
   onChange,
-  onFillExample,
+  onFillFromRawStream,
   onClearForm,
   formPulse,
   highlightedField,
 }: FieldsFormPanelProps) {
+  const dialogRef = useRef<HTMLDialogElement>(null);
+  const [rawStreamDraft, setRawStreamDraft] = useState('');
+
   const panelClass = ['panel panel-form', formPulse ? 'pulse-glow' : '']
     .filter(Boolean)
     .join(' ');
+
+  function openStreamDialog() {
+    dialogRef.current?.showModal();
+  }
+
+  function closeStreamDialog() {
+    dialogRef.current?.close();
+  }
+
+  function handleApplyStream() {
+    onFillFromRawStream(rawStreamDraft);
+    closeStreamDialog();
+  }
 
   return (
     <section className={panelClass} aria-label="Field Input Form">
@@ -43,15 +60,17 @@ export default function FieldsFormPanel({
           <button
             type="button"
             className="btn btn-sm btn-ghost"
-            title="Fill with example data"
-            onClick={onFillExample}
+            title="Paste raw stream into fields"
+            onClick={openStreamDialog}
             disabled={fields.length === 0}
           >
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="14" height="14" aria-hidden="true">
-              <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
-              <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
+              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+              <polyline points="14 2 14 8 20 8" />
+              <line x1="12" y1="18" x2="12" y2="12" />
+              <line x1="9" y1="15" x2="15" y2="15" />
             </svg>
-            <span>Fill Example</span>
+            <span>Fill from stream</span>
           </button>
 
           <button
@@ -70,6 +89,31 @@ export default function FieldsFormPanel({
           </button>
         </div>
       </div>
+
+      <dialog ref={dialogRef} className="raw-stream-dialog" aria-labelledby="raw-stream-dialog-title">
+        <div className="raw-stream-dialog-panel">
+          <h2 id="raw-stream-dialog-title" className="raw-stream-dialog-title">
+            Fill from raw stream
+          </h2>
+          <textarea
+            className="raw-stream-dialog-textarea"
+            rows={8}
+            spellCheck={false}
+            value={rawStreamDraft}
+            onChange={(e) => setRawStreamDraft(e.target.value)}
+            placeholder="Paste captured data…"
+            aria-label="Raw stream"
+          />
+          <div className="raw-stream-dialog-actions">
+            <button type="button" className="btn btn-sm btn-ghost" onClick={closeStreamDialog}>
+              Cancel
+            </button>
+            <button type="button" className="btn btn-sm btn-primary" onClick={handleApplyStream}>
+              Apply
+            </button>
+          </div>
+        </div>
+      </dialog>
 
       <div className="panel-body">
         {fields.length === 0 ? (

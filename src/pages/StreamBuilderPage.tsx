@@ -3,8 +3,8 @@ import { useOutletContext } from 'react-router-dom';
 import {
   parseCobol,
   buildStream,
-  generateExample,
   buildStreamHex,
+  rawStreamToFieldValues,
   type CobolField,
   type BreakdownItem,
 } from '../lib/cobolParser';
@@ -82,15 +82,16 @@ export default function StreamBuilderPage() {
           return;
         }
 
-        const initialValues: Record<string, string> = {};
-        fields
-          .filter((f) => !f.isFiller)
-          .forEach((f) => {
-            initialValues[f.name] = f.defaultValue ?? '';
-          });
-
         setParsedFields(fields);
-        setFieldValues(initialValues);
+        setFieldValues((prev) => {
+          const next: Record<string, string> = {};
+          fields
+            .filter((f) => !f.isFiller)
+            .forEach((f) => {
+              next[f.name] = prev[f.name] ?? f.defaultValue ?? '';
+            });
+          return next;
+        });
         showToast(`Successfully parsed ${fields.length} fields`, 'success');
 
         if (warnings.length > 0) {
@@ -154,17 +155,21 @@ export default function StreamBuilderPage() {
     return () => registerClearAll(null);
   }, [registerClearAll, handleClearAll]);
 
-  const handleFillExample = useCallback(() => {
-    if (parsedFields.length === 0) return;
-    const newValues: Record<string, string> = { ...fieldValues };
-    parsedFields
-      .filter((f) => !f.isFiller)
-      .forEach((f) => {
-        newValues[f.name] = generateExample(f);
-      });
-    setFieldValues(newValues);
-    showToast('Form filled with example data', 'success');
-  }, [parsedFields, fieldValues, showToast]);
+  const handleFillFromRawStream = useCallback(
+    (raw: string) => {
+      if (parsedFields.length === 0) return;
+      const trimmed = raw.trim();
+      if (!trimmed) {
+        showToast('Paste a raw stream first (screen capture or one contiguous block).', 'warning');
+        return;
+      }
+      const { values, warnings } = rawStreamToFieldValues(raw, parsedFields);
+      setFieldValues((prev) => ({ ...prev, ...values }));
+      const note = warnings.length ? `${warnings.join(' ')} — ` : '';
+      showToast(`${note}Fields filled from raw stream.`, warnings.length > 0 ? 'info' : 'success');
+    },
+    [parsedFields, showToast]
+  );
 
   const handleClearForm = useCallback(() => {
     if (parsedFields.length === 0) return;
@@ -232,7 +237,7 @@ export default function StreamBuilderPage() {
           fields={nonFillerFields}
           values={fieldValues}
           onChange={handleFieldChange}
-          onFillExample={handleFillExample}
+          onFillFromRawStream={handleFillFromRawStream}
           onClearForm={handleClearForm}
           formPulse={formPulse}
           highlightedField={highlightedField}

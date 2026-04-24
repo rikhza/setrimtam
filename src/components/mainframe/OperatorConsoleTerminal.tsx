@@ -43,7 +43,7 @@ const WELCOME: Omit<TerminalLine, "id">[] = [
 ];
 
 const ROLL_TIPS = [
-	"Stretch shoulders — VTAM can't route blood flow.",
+	"Stretch shoulders — circulation beats any protocol.",
 	"One screen break beats one midnight Sev-1.",
 	"Copybook length is not a personality trait.",
 	"Hydrate before you escalate.",

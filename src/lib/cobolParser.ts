@@ -1,7 +1,7 @@
 /**
  * COBOL Copybook Parser (TypeScript port)
  * =========================================
- * Parses COBOL INBOUND-MESSAGE copybook definitions into structured
+ * Parses COBOL copybook data definitions into structured
  * field descriptors for stream generation.
  *
  * Handles:
@@ -260,24 +260,33 @@ export function parseCobol(text: string): ParseResult {
     // Skip 01-level record definition
     if (trimmed.match(/^01\s+/)) continue;
 
-    // Parse 88-level condition names
-    const match88 = trimmed.match(/^88\s+(\S+)\s+VALUE\s+'?([^'.]+)'?\s*\.?\s*$/i);
-    if (match88) {
-      if (currentField) {
-        currentField.conditions.push({
-          name: match88[1],
-          value: match88[2].trim(),
-        });
+    // 66 RENAMES — not part of stream layout here
+    if (trimmed.match(/^66\s+/i)) continue;
+
+    // Parse 88-level condition names (must run before numeric level match)
+    if (trimmed.match(/^88\s+/i)) {
+      const match88 = trimmed.match(/^88\s+(\S+)\s+VALUE\s+'?([^'.]+)'?\s*\.?\s*$/i);
+      if (match88) {
+        if (currentField) {
+          currentField.conditions.push({
+            name: match88[1],
+            value: match88[2].trim(),
+          });
+        }
       }
       continue;
     }
 
-    // Parse 05-level field definitions
-    const fieldMatch = trimmed.match(/^05\s+(\S+)\s+(.*)/i);
-    if (!fieldMatch) continue;
+    // Elementary / leaf items: COBOL levels 02–49 and 77 (skip group lines without PIC)
+    const fieldLineMatch = trimmed.match(/^(\d{2,3})\s+(\S+)\s+(.*)/i);
+    if (!fieldLineMatch) continue;
 
-    const fieldName = fieldMatch[1];
-    let rest = fieldMatch[2].trim();
+    const level = parseInt(fieldLineMatch[1], 10);
+    if (level === 66) continue;
+    if (level !== 77 && (level < 2 || level > 49)) continue;
+
+    const fieldName = fieldLineMatch[2];
+    let rest = fieldLineMatch[3].trim();
 
     let redefinesTarget: string | null = null;
     const redefinesMatch = rest.match(/^REDEFINES\s+(\S+)\s*(.*)/i);
@@ -399,31 +408,9 @@ export function generateExample(field: CobolField): string {
       const intLen = field.picInfo.length - field.decimals;
       return '0'.repeat(Math.max(intLen - 4, 0)) + '1000' + '.' + '0'.repeat(field.decimals);
     }
-    if (field.name.includes('ACCNO') || field.name.includes('ACCT'))
-      return '0000000001'.substring(10 - field.picInfo.length);
-    if (field.name.includes('DATE'))
-      return '20260101'.substring(0, field.picInfo.length);
-    if (field.name.includes('BRANCH') || field.name.includes('BRCH'))
-      return '0001'.substring(4 - Math.min(field.picInfo.length, 4));
     return '0'.repeat(field.picInfo.length);
   }
 
-  if (field.name.includes('TRANS') || field.name.includes('TXN'))
-    return 'TXN1'.substring(0, field.length);
-  if (field.name.includes('WSID') || field.name.includes('TERM'))
-    return 'TERM1'.substring(0, field.length);
-  if (field.name.includes('CURR') || field.name.includes('SYMBL'))
-    return 'USD'.substring(0, field.length);
-  if (field.name.includes('NAME'))
-    return 'JOHN DOE'.substring(0, field.length);
-  if (field.name.includes('DESC') || field.name.includes('TRAILER'))
-    return 'DESCRIPTION'.substring(0, field.length);
-  if (field.name.includes('ADDR'))
-    return '123 MAIN ST'.substring(0, field.length);
-  if (field.name.includes('FLAG') || field.name.includes('TYPE') || field.name.includes('MODE'))
-    return 'Y'.substring(0, field.length);
-  if (field.name.includes('BANK'))
-    return 'BANKCODE'.substring(0, field.length);
   return ' '.repeat(field.length);
 }
 
@@ -556,6 +543,45 @@ export function sliceRawStreamToBreakdown(
   }
 
   return { breakdown, warnings };
+}
+
+/**
+ * Strip line breaks from a fixed-screen paste (e.g. 24×80 rows with CRLF)
+ * so character indices match the contiguous logical stream used by {@link buildStream}.
+ * Streams pasted without CRLF are unchanged (aside from removed CR/LF characters).
+ */
+export function normalizeRawStreamForLayout(raw: string): string {
+  if (!raw) return '';
+  return raw.replace(/\r\n/g, '').replace(/\r/g, '').replace(/\n/g, '');
+}
+
+/** Map a fixed-width stream segment to a value suitable for the form / storage. */
+function streamSegmentToEditableValue(field: CobolField, segment: string): string {
+  if (field.encoding === 'comp3') {
+    return segment.replace(/\s+/g, '').toUpperCase();
+  }
+  if (field.type === 'numeric') {
+    return segment.replace(/\s+$/g, '');
+  }
+  return segment.replace(/\s+$/g, '');
+}
+
+/**
+ * Parse a pasted raw message (with or without CRLF between screen rows) into
+ * per-field values aligned to the copybook layout.
+ */
+export function rawStreamToFieldValues(
+  raw: string,
+  fields: CobolField[]
+): { values: Record<string, string>; warnings: string[] } {
+  const normalized = normalizeRawStreamForLayout(raw);
+  const { breakdown, warnings } = sliceRawStreamToBreakdown(normalized, fields);
+  const values: Record<string, string> = {};
+  for (const item of breakdown) {
+    if (item.field.isFiller) continue;
+    values[item.field.name] = streamSegmentToEditableValue(item.field, item.value);
+  }
+  return { values, warnings };
 }
 
 // ---------------------------------------------------------------------------

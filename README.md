@@ -2,11 +2,11 @@
 
 Repository: [github.com/rikhza/setrimtam](https://github.com/rikhza/setrimtam)
 
-Browser-based utilities for mainframe-style development workflows. Parse COBOL copybooks, build and inspect VTAM-style streams, and work with Julian ordinal dates. Everything runs **in your browser**; copybooks and payloads stay on your machine (with optional persistence in `localStorage` for convenience).
+Browser-based utilities for host-style development workflows. Parse COBOL copybooks, build and inspect fixed-width message streams, and work with Julian ordinal dates. Everything runs **in your browser**; copybooks and payloads stay on your machine (with optional persistence in `localStorage` for convenience).
 
 ## Features
 
-- **Stream builder** — Parse a COBOL `INBOUND-MESSAGE` style copybook, fill fields, and generate stream output (including hex) for CICS / VTAM-style testing.
+- **Stream builder** — Parse a COBOL copybook, fill fields, and generate stream output (including hex) from the PIC layout.
 - **FMV (field map view)** — Paste raw stream data alongside a copybook to slice it into a field-by-field breakdown, with warnings when layout and data disagree.
 - **Julian date** — Convert between calendar dates and ordinal Julian forms (`YYDDD` / `YYYYDDD`).
 - **Operator-console aesthetic** — Retro terminal UI for a focused working environment.
