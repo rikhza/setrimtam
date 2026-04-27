@@ -1,5 +1,5 @@
 import type { BreakdownItem } from '../lib/cobolParser';
-import { unpackComp3 } from '../lib/cobolParser';
+import { fieldDisplayName, unpackComp3 } from '../lib/cobolParser';
 
 interface FmvOutputPanelProps {
   breakdown: BreakdownItem[];
@@ -9,9 +9,11 @@ interface FmvOutputPanelProps {
 
 function columnHeader(items: BreakdownItem[], index: number): string {
   const f = items[index].field;
-  const name = f.name;
-  const sameNameBefore = items.slice(0, index).filter((x) => x.field.name === name).length;
-  const sameNameTotal = items.filter((x) => x.field.name === name).length;
+  const name = fieldDisplayName(f);
+  const sameNameBefore = items
+    .slice(0, index)
+    .filter((x) => fieldDisplayName(x.field) === name).length;
+  const sameNameTotal = items.filter((x) => fieldDisplayName(x.field) === name).length;
   if (sameNameTotal <= 1) return name;
   return `${name} ·${sameNameBefore + 1}`;
 }

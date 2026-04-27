@@ -1,5 +1,6 @@
 import { useRef, useState } from 'react';
 import type { CobolField } from '../lib/cobolParser';
+import { fieldDisplayName } from '../lib/cobolParser';
 
 interface TerminalPreviewProps {
   stream: string;
@@ -38,7 +39,7 @@ export default function TerminalPreview({ stream, fields }: TerminalPreviewProps
         let accPos = 0;
         for (const f of fields) {
           if (streamPos >= accPos && streamPos < accPos + f.length) {
-            setCursorInfo(`[${row + 1},${col + 1}] Pos:${streamPos} → ${f.name}`);
+            setCursorInfo(`[${row + 1},${col + 1}] Pos:${streamPos} → ${fieldDisplayName(f)}`);
             return;
           }
           accPos += f.length;

@@ -133,6 +133,7 @@ const CobolParser = (() => {
         const fieldMap = new Map(); // Track by name for REDEFINES handling
         const warnings = [];
         let currentField = null;
+        let fillerCounter = 0;
 
         for (let i = 0; i < lines.length; i++) {
             const rawLine = lines[i];
@@ -186,7 +187,9 @@ const CobolParser = (() => {
             if (level === 66) continue;
             if (level !== 77 && (level < 2 || level > 49)) continue;
 
-            const fieldName = fieldLineMatch[2];
+            const rawName = fieldLineMatch[2];
+            const isFillerField = rawName.toUpperCase() === 'FILLER';
+            const fieldName = isFillerField ? `FILLER__${++fillerCounter}` : rawName;
             let rest = fieldLineMatch[3].trim();
 
             // Handle REDEFINES — skip the redefined field, this one replaces it
@@ -236,7 +239,9 @@ const CobolParser = (() => {
                 redefines: redefinesTarget,
                 occurs: occurs,
                 conditions: [],
-                lineNumber: i + 1
+                lineNumber: i + 1,
+                isFiller: isFillerField,
+                originalName: isFillerField ? 'FILLER' : undefined
             };
 
             // Handle REDEFINES — replace the target
@@ -262,7 +267,7 @@ const CobolParser = (() => {
             }
 
             // Check for duplicate field names (multiple definitions due to change control)
-            const existingIdx = fields.findIndex(f => f.name === fieldName);
+            const existingIdx = isFillerField ? -1 : fields.findIndex(f => f.name === rawName);
             if (existingIdx >= 0) {
                 // Replace with the latest definition
                 fields[existingIdx] = field;
@@ -271,10 +276,11 @@ const CobolParser = (() => {
                 // Handle OCCURS — expand into multiple fields
                 if (occurs > 1) {
                     for (let o = 1; o <= occurs; o++) {
+                        const occName = isFillerField ? `FILLER__${++fillerCounter}` : `${rawName}(${o})`;
                         const occField = {
                             ...field,
-                            name: `${fieldName}(${o})`,
-                            originalName: fieldName,
+                            name: occName,
+                            originalName: isFillerField ? 'FILLER' : rawName,
                             occurrenceIndex: o,
                             occurs: 1 // expanded
                         };
@@ -290,7 +296,7 @@ const CobolParser = (() => {
         // Filter out FILLER fields (they still need to take space in the stream)
         // But mark them so the UI knows
         fields.forEach(f => {
-            f.isFiller = f.name === 'FILLER';
+            f.isFiller = f.originalName === 'FILLER' || f.name === 'FILLER' || /^FILLER__/.test(f.name);
         });
 
         return { fields, warnings };

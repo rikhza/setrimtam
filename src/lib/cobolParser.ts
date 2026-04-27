@@ -53,8 +53,15 @@ export interface CobolField {
   conditions: Condition[];
   lineNumber: number;
   isFiller: boolean;
+  /** Base COBOL name (e.g. array root before `(n)`); for FILLER always `'FILLER'`. */
   originalName?: string;
   occurrenceIndex?: number;
+}
+
+/** Label for UI: repeated FILLER rows share the name FILLER in copybooks. */
+export function fieldDisplayName(field: CobolField): string {
+  if (field.isFiller) return 'FILLER';
+  return field.name;
 }
 
 export interface BreakdownItem {
@@ -240,6 +247,7 @@ export function parseCobol(text: string): ParseResult {
   const fields: CobolField[] = [];
   const warnings: string[] = [];
   let currentField: CobolField | null = null;
+  let fillerCounter = 0;
 
   for (let i = 0; i < lines.length; i++) {
     const rawLine = lines[i];
@@ -285,7 +293,8 @@ export function parseCobol(text: string): ParseResult {
     if (level === 66) continue;
     if (level !== 77 && (level < 2 || level > 49)) continue;
 
-    const fieldName = fieldLineMatch[2];
+    const rawName = fieldLineMatch[2];
+    const isFillerField = rawName.toUpperCase() === 'FILLER';
     let rest = fieldLineMatch[3].trim();
 
     let redefinesTarget: string | null = null;
@@ -326,8 +335,7 @@ export function parseCobol(text: string): ParseResult {
       occurs = parseInt(occursMatch[1], 10);
     }
 
-    const field: CobolField = {
-      name: fieldName,
+    const shared = {
       pic: picRaw,
       picInfo,
       length: byteLength,
@@ -338,59 +346,88 @@ export function parseCobol(text: string): ParseResult {
       encoding,
       defaultValue,
       redefines: redefinesTarget,
-      occurs,
-      conditions: [],
+      conditions: [] as Condition[],
       lineNumber: i + 1,
-      isFiller: false,
     };
 
     if (redefinesTarget) {
+      const nm = isFillerField ? `FILLER__${++fillerCounter}` : rawName;
+      const field: CobolField = {
+        ...shared,
+        name: nm,
+        occurs,
+        isFiller: isFillerField,
+        originalName: isFillerField ? 'FILLER' : undefined,
+      };
       const targetIdx = fields.findIndex((f) => f.name === redefinesTarget);
       if (targetIdx >= 0) {
         fields[targetIdx] = {
           ...fields[targetIdx],
-          pic: picRaw,
-          picInfo,
-          length: byteLength,
-          charLength,
-          type: picInfo.type,
-          decimals: picInfo.decimals,
-          signed: picInfo.signed,
-          encoding,
+          ...shared,
           redefines: redefinesTarget,
-          name: fieldName,
+          name: nm,
+          isFiller: isFillerField,
+          originalName: isFillerField
+            ? 'FILLER'
+            : (fields[targetIdx].originalName ?? fields[targetIdx].name),
         };
       }
       currentField = field;
       continue;
     }
 
-    const existingIdx = fields.findIndex((f) => f.name === fieldName);
+    const existingIdx = isFillerField ? -1 : fields.findIndex((f) => f.name === rawName);
     if (existingIdx >= 0) {
+      const field: CobolField = {
+        ...shared,
+        name: rawName,
+        occurs,
+        isFiller: isFillerField,
+        originalName: undefined,
+      };
       fields[existingIdx] = field;
       currentField = field;
     } else {
       if (occurs > 1) {
         for (let o = 1; o <= occurs; o++) {
-          const occField: CobolField = {
-            ...field,
-            name: `${fieldName}(${o})`,
-            originalName: fieldName,
-            occurrenceIndex: o,
-            occurs: 1,
-          };
-          fields.push(occField);
+          if (isFillerField) {
+            const occField: CobolField = {
+              ...shared,
+              name: `FILLER__${++fillerCounter}`,
+              occurs: 1,
+              isFiller: true,
+              originalName: 'FILLER',
+              occurrenceIndex: o,
+            };
+            fields.push(occField);
+            currentField = occField;
+          } else {
+            const occField: CobolField = {
+              ...shared,
+              name: `${rawName}(${o})`,
+              occurs: 1,
+              isFiller: false,
+              originalName: rawName,
+              occurrenceIndex: o,
+            };
+            fields.push(occField);
+            currentField = occField;
+          }
         }
       } else {
+        const nm = isFillerField ? `FILLER__${++fillerCounter}` : rawName;
+        const field: CobolField = {
+          ...shared,
+          name: nm,
+          occurs: 1,
+          isFiller: isFillerField,
+          originalName: isFillerField ? 'FILLER' : undefined,
+        };
         fields.push(field);
+        currentField = field;
       }
-      currentField = field;
     }
   }
-
-  fields.forEach((f) => {
-    f.isFiller = f.name === 'FILLER';
-  });
 
   return { fields, warnings };
 }

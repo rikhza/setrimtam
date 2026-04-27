@@ -1,6 +1,6 @@
 import { useRef, useState } from 'react';
 import type { CobolField, BreakdownItem } from '../lib/cobolParser';
-import { unpackComp3 } from '../lib/cobolParser';
+import { fieldDisplayName, unpackComp3 } from '../lib/cobolParser';
 import TerminalPreview from './TerminalPreview';
 
 interface StreamOutputPanelProps {
@@ -163,7 +163,7 @@ export default function StreamOutputPanel({
           >
             {hoveredItem ? (
               <>
-                <span className="ssd-name">{hoveredItem.field.name}</span>
+                <span className="ssd-name">{fieldDisplayName(hoveredItem.field)}</span>
                 <span className="ssd-sep" aria-hidden="true">·</span>
 
                 {hoveredItem.field.encoding === 'comp3' ? (
@@ -228,7 +228,7 @@ export default function StreamOutputPanel({
                   }}
                 >
                   <span className="smr-offset" title="Byte offset">+{item.byteOffset}</span>
-                  <span className="smr-name">{item.field.name}</span>
+                  <span className="smr-name">{fieldDisplayName(item.field)}</span>
                   <div className="smr-badges">
                     {item.field.encoding === 'comp3' && (
                       <span className="smr-badge comp3">C3</span>
