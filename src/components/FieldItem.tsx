@@ -1,4 +1,4 @@
-import { useRef, useEffect } from 'react';
+import { useRef, useEffect, memo } from 'react';
 import type { CobolField } from '../lib/cobolParser';
 
 interface FieldItemProps {
@@ -9,7 +9,7 @@ interface FieldItemProps {
   index: number;
 }
 
-export default function FieldItem({
+function FieldItem({
   field,
   value,
   onChange,
@@ -147,3 +147,5 @@ export default function FieldItem({
     </div>
   );
 }
+
+export default memo(FieldItem);

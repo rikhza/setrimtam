@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react';
+import { useRef, useState, useMemo, useCallback } from 'react';
 import type { CobolField } from '../lib/cobolParser';
 import { fieldDisplayName } from '../lib/cobolParser';
 
@@ -10,47 +10,54 @@ interface TerminalPreviewProps {
 const COLS = 80;
 const ROWS = 24;
 
+function formatStreamForTerminal(s: string): string {
+  let out = '';
+  for (let i = 0; i < s.length; i += COLS) {
+    out += s.substring(i, Math.min(i + COLS, s.length)) + '\n';
+  }
+  return out;
+}
+
 export default function TerminalPreview({ stream, fields }: TerminalPreviewProps) {
   const [cursorInfo, setCursorInfo] = useState('');
   const containerRef = useRef<HTMLPreElement>(null);
+  const rafRef = useRef<number>(0);
 
-  function formatStreamForTerminal(s: string): string {
-    let formatted = '';
-    for (let i = 0; i < s.length; i += COLS) {
-      formatted += s.substring(i, Math.min(i + COLS, s.length)) + '\n';
-    }
-    return formatted;
-  }
+  const formatted = useMemo(() => stream ? formatStreamForTerminal(stream) : '', [stream]);
 
-  function handleMouseMove(e: React.MouseEvent<HTMLPreElement>) {
-    const rect = e.currentTarget.getBoundingClientRect();
-    const charWidth = 6.6;
-    const charHeight = 14.3;
+  const handleMouseMove = useCallback((e: React.MouseEvent<HTMLPreElement>) => {
+    cancelAnimationFrame(rafRef.current);
+    rafRef.current = requestAnimationFrame(() => {
+      const rect = e.currentTarget.getBoundingClientRect();
+      const charWidth = 6.6;
+      const charHeight = 14.3;
 
-    const x = e.clientX - rect.left - 10;
-    const y = e.clientY - rect.top - 8;
+      const x = e.clientX - rect.left - 10;
+      const y = e.clientY - rect.top - 8;
 
-    const col = Math.floor(Math.max(0, x) / charWidth);
-    const row = Math.floor(Math.max(0, y) / charHeight);
+      const col = Math.floor(Math.max(0, x) / charWidth);
+      const row = Math.floor(Math.max(0, y) / charHeight);
 
-    if (col < COLS && row < ROWS) {
-      const streamPos = row * COLS + col;
-      if (streamPos < stream.length) {
-        let accPos = 0;
-        for (const f of fields) {
-          if (streamPos >= accPos && streamPos < accPos + f.length) {
-            setCursorInfo(`[${row + 1},${col + 1}] Pos:${streamPos} → ${fieldDisplayName(f)}`);
-            return;
+      if (col < COLS && row < ROWS) {
+        const streamPos = row * COLS + col;
+        if (streamPos < stream.length) {
+          let accPos = 0;
+          for (const f of fields) {
+            if (streamPos >= accPos && streamPos < accPos + f.length) {
+              setCursorInfo(`[${row + 1},${col + 1}] Pos:${streamPos} → ${fieldDisplayName(f)}`);
+              return;
+            }
+            accPos += f.length;
           }
-          accPos += f.length;
+        } else {
+          setCursorInfo(`[${row + 1},${col + 1}] Empty space`);
         }
-      } else {
-        setCursorInfo(`[${row + 1},${col + 1}] Empty space`);
       }
-    }
-  }
+    });
+  }, [stream, fields]);
 
   function handleMouseLeave() {
+    cancelAnimationFrame(rafRef.current);
     setCursorInfo('');
   }
 
@@ -78,7 +85,7 @@ export default function TerminalPreview({ stream, fields }: TerminalPreviewProps
             onMouseLeave={handleMouseLeave}
             aria-label="Terminal preview of message stream"
           >
-            {stream ? formatStreamForTerminal(stream) : ''}
+            {formatted}
           </pre>
         </div>
       </div>
